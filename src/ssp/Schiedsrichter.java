@@ -33,9 +33,10 @@ public class Schiedsrichter extends Thread{ //VERBRAUCHER
                 while (!isInterrupted()) {
                     auswerten(tisch.remove());
                 }
-                System.out.printf(getName() + " ist fertig." + gesamtauswertung());
             } catch (InterruptedException e) {
                 System.out.println(getName() + " wurde unterbrochen.");
+            } finally {
+                System.out.printf(getName() + " ist fertig." + gesamtauswertung());
             }
 
     }

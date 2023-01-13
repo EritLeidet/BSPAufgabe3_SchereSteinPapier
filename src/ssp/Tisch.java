@@ -10,6 +10,7 @@ public class Tisch implements TischVorlage {
     private LinkedList<Spielzug> buffer;
     private Semaphore sem_E;
     private Semaphore sem_V;
+    private final int maxSizeKarten = 2;
 
     public Tisch() {
         buffer = new LinkedList<Spielzug>();
@@ -17,9 +18,9 @@ public class Tisch implements TischVorlage {
         sem_V = new Semaphore(0);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         //Tisch
-        TischVorlage tisch = new TischAlternative();
+        TischVorlage tisch = new Tisch();
 
         //Spieler
         Spieler spieler1 = new Spieler(tisch);
@@ -44,32 +45,55 @@ public class Tisch implements TischVorlage {
         System.out.printf("%nSpielschluss...%n");
         spieler1.interrupt();
         spieler2.interrupt();
+        spieler1.join();
+        spieler2.join();
         schieri.interrupt();
+        schieri.join();
     }
 
-    public void enter(Spielzug item) throws InterruptedException {
-        sem_E.acquire();
-        synchronized (this) {
-            buffer.add(item);
-            if (sem_E.availablePermits() > 0) {
-                wait();
-            } else {
-                notifyAll();
+//    public void enter(Spielzug item) throws InterruptedException {
+//        sem_E.acquire();
+//        synchronized (this) {
+//            buffer.add(item);
+//            if (sem_E.availablePermits() > 0) {
+//                wait();
+//            } else {
+//                notifyAll();
+//            }
+//        }//sync
+//        sem_V.release();
+//    }
+
+    public synchronized void enter (Spielzug item) throws InterruptedException {
+            while (buffer.size() >= maxSizeKarten) { /* Puffer ist voll */
+                this.wait(); // Ausführenden Thread blockieren
             }
-        }//sync
-        sem_V.release();
+            buffer.add(item); // Datenpaket in den Puffer legen
+            this.notifyAll();
     }
 
-    public Spielzug[] remove() throws InterruptedException {
+    public synchronized Spielzug[] remove() throws InterruptedException {
         Spielzug[] item = new Spielzug[2];
-
-        sem_V.acquire(2);
-        synchronized (this) {
-            item[0] = buffer.removeFirst();
-            item[1] = buffer.removeFirst(); //Remove 2 items
+        while (buffer.size() < maxSizeKarten) { /* Puffer noch nicht voll */
+            this.wait(); // Ausführenden Thread blockieren
         }
-        sem_E.release(2);
-
+        /* Datenpaket aus dem Puffer holen */
+        item[0] = buffer.removeFirst();
+        item[1] = buffer.removeFirst(); //Remove 2 items
+        this.notifyAll();
         return item;
     }
+
+//    public Spielzug[] remove() throws InterruptedException {
+//        Spielzug[] item = new Spielzug[2];
+//
+//        sem_V.acquire(2);
+//        synchronized (this) {
+//            item[0] = buffer.removeFirst();
+//            item[1] = buffer.removeFirst(); //Remove 2 items
+//        }
+//        sem_E.release(2);
+//
+//        return item;
+//    }
 }
